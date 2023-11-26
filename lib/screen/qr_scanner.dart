@@ -1,26 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
+import 'package:check/models/participant.dart';
 import 'package:check/screen/participant_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:intl/intl.dart';
 
 class QRViewScreen extends StatefulWidget {
   const QRViewScreen({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _QRViewScreenState();
-  //result!.code
 }
 
 class _QRViewScreenState extends State<QRViewScreen> {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  Map<String, dynamic>? _data;
   void _loadData() async {
     if (!mounted) return; // Check if the widget is still mounted
 
@@ -31,34 +28,33 @@ class _QRViewScreenState extends State<QRViewScreen> {
     if (!mounted) return; // Check again before updating the state
 
     final Map<String, dynamic> data = jsonDecode(res.body);
-    setState(() {
-      _data = data;
+    Timer(const Duration(seconds: 1), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (ctx) => ParticipantDetails(
+              participant: Participant(
+                name:
+                    "${data["data"]["firstName"]}  ${data["data"]["lastName"]}",
+                phoneNumber: data["data"]["phoneNumber"].toString(),
+                email: data["data"]["email"].toString(),
+                team: data["data"]["team"].toString(),
+                birthDate: data["data"]["dateOfBirth"],
+                state: data["data"]["state"].toString(),
+              ),
+              result: result,
+            ),
+          ),
+        );
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (result != null) {
+    if (result != null && result!.code != null) {
       controller!.pauseCamera();
       _loadData();
-      log(DateTime.tryParse(_data!["data"]["dateOfBirth"]).toString());
-      Timer(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (ctx) => ParticipantDetails(
-                name:
-                    "${_data!["data"]["firstName"]} ${_data!["data"]["lastName"]}",
-                phoneNumber: _data!["data"]["phoneNumber"].toString(),
-                email: _data!["data"]["email"].toString(),
-                team: _data!["data"]["team"].toString(),
-                birthDate: _data!["data"]["dateOfBirth"],
-                state: _data!["data"]["state"].toString(),
-              ),
-            ),
-          );
-        }
-      });
     }
 
     return Scaffold(
