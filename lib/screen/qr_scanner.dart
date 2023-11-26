@@ -1,9 +1,12 @@
 import 'dart:async';
-
+import 'dart:convert';
+import 'dart:developer';
 import 'package:check/screen/participant_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:http/http.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:intl/intl.dart';
 
 class QRViewScreen extends StatefulWidget {
   const QRViewScreen({Key? key}) : super(key: key);
@@ -17,18 +20,47 @@ class _QRViewScreenState extends State<QRViewScreen> {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  Map<String, dynamic>? _data;
+  void _loadData() async {
+    if (!mounted) return; // Check if the widget is still mounted
+
+    final url =
+        Uri.parse("https://devfestcheck.onrender.com/data/${result!.code}");
+    final Response res = await get(url);
+
+    if (!mounted) return; // Check again before updating the state
+
+    final Map<String, dynamic> data = jsonDecode(res.body);
+    setState(() {
+      _data = data;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     if (result != null) {
+      controller!.pauseCamera();
+      _loadData();
+      log(DateTime.tryParse(_data!["data"]["dateOfBirth"]).toString());
       Timer(const Duration(seconds: 1), () {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (ctx) => const ParticipantDetails(),
-          ),
-        );
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (ctx) => ParticipantDetails(
+                name:
+                    "${_data!["data"]["firstName"]} ${_data!["data"]["lastName"]}",
+                phoneNumber: _data!["data"]["phoneNumber"].toString(),
+                email: _data!["data"]["email"].toString(),
+                team: _data!["data"]["team"].toString(),
+                birthDate: _data!["data"]["dateOfBirth"],
+                state: _data!["data"]["state"].toString(),
+              ),
+            ),
+          );
+        }
       });
     }
+
     return Scaffold(
       body: Column(
         children: <Widget>[
@@ -40,7 +72,7 @@ class _QRViewScreenState extends State<QRViewScreen> {
             flex: 1,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
+              children: [
                 const Text('Scan a code'),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
