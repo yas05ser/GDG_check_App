@@ -18,12 +18,20 @@ class _QRViewScreenState extends State<QRViewScreen> {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  bool _isLoading = false;
+
   void _loadData() async {
+    _isLoading = true;
+    setState(() {});
+
     if (!mounted) return; // Check if the widget is still mounted
 
     final url =
         Uri.parse("https://devfestcheck.onrender.com/data/${result!.code}");
     final Response res = await get(url);
+
+    _isLoading = false;
+    setState(() {});
 
     if (!mounted) return; // Check again before updating the state
 
@@ -58,52 +66,65 @@ class _QRViewScreenState extends State<QRViewScreen> {
     }
 
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: <Widget>[
-          Expanded(
-            flex: 4,
-            child: _buildQrView(context),
-          ),
-          Expanded(
-            flex: 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Text('Scan a code'),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+          Column(
+            children: <Widget>[
+              Expanded(
+                flex: 4,
+                child: _buildQrView(context),
+              ),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Container(
-                      margin: const EdgeInsets.all(8),
-                      child: InkWell(
-                        onTap: () async {
-                          await controller?.toggleFlash();
-                          setState(() {});
-                        },
-                        child: FutureBuilder(
-                          future: controller?.getFlashStatus(),
-                          builder: (context, snapshot) {
-                            return Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SvgPicture.asset("assets/button.svg"),
-                                Text(
-                                  'Flash: ${snapshot.data}',
-                                  style: const TextStyle(
-                                      fontSize: 20, color: Colors.white),
-                                ),
-                              ],
-                            );
-                          },
+                    const Text('Scan a code'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: InkWell(
+                            onTap: () async {
+                              await controller?.toggleFlash();
+                              setState(() {});
+                            },
+                            child: FutureBuilder(
+                              future: controller?.getFlashStatus(),
+                              builder: (context, snapshot) {
+                                return Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    SvgPicture.asset("assets/button.svg"),
+                                    Text(
+                                      'Flash: ${snapshot.data}',
+                                      style: const TextStyle(
+                                          fontSize: 20, color: Colors.white),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              )
+            ],
+          ),
+          if (_isLoading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
             ),
-          )
         ],
       ),
     );
